@@ -3,6 +3,8 @@ from __future__ import division, absolute_import, print_function, unicode_litera
 
 ##################################################################################################
 
+import unicodedata
+
 from ...helper import LazyLogger
 
 from . import queries_music as QU
@@ -11,6 +13,18 @@ from .kodi import Kodi
 ##################################################################################################
 
 LOG = LazyLogger(__name__)
+
+
+def normalize_for_db(text):
+    """Normalize Unicode text to NFC form for consistent database operations.
+    
+    This prevents issues with characters that have multiple Unicode representations
+    (e.g., Greek letter mu U+03BC vs micro sign U+00B5) which can cause comparison
+    mismatches and SQLite COLLATE NOCASE issues.
+    """
+    if text:
+        return unicodedata.normalize('NFC', text)
+    return text
 
 ##################################################################################################
 
@@ -55,11 +69,13 @@ class Music(Kodi):
 
     def get(self, artist_id, name, musicbrainz):
         """Get artist or create the entry."""
+        # Normalize Unicode to NFC form for consistent database operations
+        name = normalize_for_db(name)
         try:
             self.cursor.execute(QU.get_artist, (musicbrainz,))
             result = self.cursor.fetchone()
             artist_id_res = result[0]
-            artist_name = result[1]
+            artist_name = normalize_for_db(result[1])
         except TypeError:
             artist_id_res = self.add_artist(artist_id, name, musicbrainz)
         else:
@@ -70,6 +86,8 @@ class Music(Kodi):
 
     def add_artist(self, artist_id, name, *args):
         """Safety check, when musicbrainz does not exist"""
+        # Normalize Unicode to NFC form for consistent database operations
+        name = normalize_for_db(name)
         try:
             self.cursor.execute(QU.get_artist_by_name, (name,))
             artist_id_res = self.cursor.fetchone()[0]

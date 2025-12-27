@@ -510,7 +510,14 @@ class FullSync(object):
                             dialog.update(
                                 percent, message="Artist: {}".format(item.get("Name"))
                             )
-                            obj.artist(item)
+                            try:
+                                obj.artist(item)
+                            except Exception as error:
+                                LOG.warning(
+                                    "Failed to sync artist '%s': %s",
+                                    item.get("Name"),
+                                    error,
+                                )
                             count += 1
 
                     albums = server.get_items(
